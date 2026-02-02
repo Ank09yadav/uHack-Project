@@ -344,6 +344,7 @@ function EmotionBadge({ emotion }: { emotion: string }) {
 function DisabilityInsightsView({ students }: { students: StudentInsight[] }) {
     return (
         <div className="space-y-4">
+            
             <h2 className="text-xl font-bold text-gray-900">Disability Detection Insights</h2>
             <p className="text-gray-600">AI-powered early detection of learning difficulties</p>
 

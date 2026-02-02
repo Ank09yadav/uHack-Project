@@ -8,6 +8,15 @@
     "id": "1767511792663",
     "createdAt": "2026-01-04T07:29:52.663Z",
     "updatedAt": "2026-01-04T07:29:52.663Z"
+  },
+  {
+    "name": "Ujjwal",
+    "email": "Ujjwal@gmail.com",
+    "password": "$2b$10$.jSnMgrAwr4JcrVaSLSxX./T7IpUtFbgmun6.zT9An.quY.Q5jGXK",
+    "role": "user",
+    "_id": "1769677298066",
+    "id": "1769677298066",
+    "createdAt": "2026-01-29T09:01:38.066Z",
+    "updatedAt": "2026-01-29T09:01:38.066Z"
   }
-  
 ]
