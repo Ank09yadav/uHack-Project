@@ -22,12 +22,18 @@ import {
     Video,
     FileText,
     MessageSquare,
-    Activity as ActivityIcon
+    Activity as ActivityIcon,
+    Trash2,
+    Plus,
+    X as CloseIcon,
+    Check,
+    Edit2
 } from 'lucide-react';
 import Link from 'next/link';
 import { UserStats } from '@/lib/services/gamificationService';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { AnimatePresence } from 'framer-motion';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -39,6 +45,10 @@ export default function DashboardPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [thisWeek, setThisWeek] = useState({ modules: 0, time: 0, points: 0 });
+    const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+    const [editingGoal, setEditingGoal] = useState<any>(null);
+    const [newGoalData, setNewGoalData] = useState({ title: '', target: 10, color: 'blue' });
 
     const user = session?.user;
 
@@ -91,6 +101,10 @@ export default function DashboardPage() {
                     duration: m.duration || 10
                 })));
 
+                if (data.thisWeek) {
+                    setThisWeek(data.thisWeek);
+                }
+
             } catch (error) {
                 console.error('Failed to fetch dashboard data', error);
                 setError(error instanceof Error ? error.message : 'Unknown error');
@@ -103,6 +117,118 @@ export default function DashboardPage() {
             fetchDashboardData();
         }
     }, [status]);
+
+    // Background Time Tracking
+    useEffect(() => {
+        if (status === 'authenticated') {
+            const interval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/dashboard/track', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ timeIncrement: 1 })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Update local stats and goals without full refresh
+                        setStats(prev => prev ? {
+                            ...prev,
+                            totalTimeSpent: data.totalTimeSpent,
+                            totalPoints: data.points, // Fix: Use totalPoints to match interface
+                            streak: data.streak
+                        } : null);
+
+                        // Update This Week stats locally
+                        setThisWeek(prev => ({
+                            ...prev,
+                            time: prev.time + 1,
+                            points: prev.points + (data.points - (stats?.totalPoints || 0)) // Just in case points changed more
+                        }));
+
+                        // Also update "Study Time" goal in local state if it exists
+                        setGoals(prev => prev.map(g =>
+                            g.title === 'Study Time' ? { ...g, current: (g.current || 0) + 1 } : g
+                        ));
+                    }
+                } catch (error) {
+                    console.error("Real-time update failed", error);
+                }
+            }, 60000); // 1 minute
+            return () => clearInterval(interval);
+        }
+    }, [status]);
+
+    const handleAddGoal = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingGoal) {
+                const res = await fetch('/api/dashboard/goals', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: editingGoal._id, ...newGoalData })
+                });
+                if (!res.ok) throw new Error('Failed to update goal');
+                const updatedGoal = await res.json();
+                setGoals(goals.map(g => g._id === editingGoal._id ? updatedGoal : g));
+            } else {
+                const res = await fetch('/api/dashboard/goals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newGoalData)
+                });
+                if (!res.ok) throw new Error('Failed to add goal');
+                const createdGoal = await res.json();
+                setGoals([...goals, createdGoal]);
+            }
+            setIsGoalModalOpen(false);
+            setEditingGoal(null);
+            setNewGoalData({ title: '', target: 10, color: 'blue' });
+        } catch (error) {
+            console.error('Error saving goal:', error);
+        }
+    };
+
+    const handleToggleGoalComplete = async (goal: any) => {
+        try {
+            const newCompletedStatus = !goal.completed;
+            const res = await fetch('/api/dashboard/goals', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: goal._id, completed: newCompletedStatus })
+            });
+            if (!res.ok) throw new Error('Failed to update goal status');
+            const updatedGoal = await res.json();
+            setGoals(goals.map(g => g._id === goal._id ? updatedGoal : g));
+
+            // If completed, maybe refresh stats for points
+            if (newCompletedStatus) {
+                setStats(prev => prev ? { ...prev, totalPoints: (prev.totalPoints || 0) + 5 } : null);
+            } else {
+                setStats(prev => prev ? { ...prev, totalPoints: (prev.totalPoints || 0) - 5 } : null);
+            }
+        } catch (error) {
+            console.error('Error toggling goal completion:', error);
+        }
+    };
+
+    const handleEditGoalClick = (goal: any) => {
+        setEditingGoal(goal);
+        setNewGoalData({ title: goal.title, target: goal.target, color: goal.color });
+        setIsGoalModalOpen(true);
+    };
+
+    const handleDeleteGoal = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this goal?')) return;
+        try {
+            const res = await fetch(`/api/dashboard/goals?id=${id}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('Failed to delete goal');
+            setGoals(goals.filter(g => g._id !== id));
+        } catch (error) {
+            console.error('Error deleting goal:', error);
+        }
+    };
 
     const allFeatures = [
         { id: 'stt', title: 'Speech to Text', icon: <Mic size={20} />, description: 'Convert voice to text', href: '/tools/speech-to-text', color: 'bg-blue-500' },
@@ -165,7 +291,7 @@ export default function DashboardPage() {
                     className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4"
                 >
                     <div>
-                        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Welcome back! 👋</h1>
+                        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Welcome back, {session?.user?.name || 'Friend'}! 👋</h1>
                         <p className="text-lg text-gray-600 mt-2">Ready to learn something new today?</p>
                     </div>
                 </motion.div>
@@ -288,10 +414,15 @@ export default function DashboardPage() {
                                 {goals.length > 0 ? (
                                     goals.map((goal, i) => (
                                         <GoalProgress
-                                            key={i}
+                                            key={goal._id || i}
+                                            id={goal._id}
                                             label={goal.title}
                                             current={goal.current}
                                             target={goal.target}
+                                            completed={goal.completed}
+                                            onDelete={handleDeleteGoal}
+                                            onEdit={() => handleEditGoalClick(goal)}
+                                            onToggle={() => handleToggleGoalComplete(goal)}
                                             color={goal.color === 'blue' ? "from-blue-500 to-cyan-500" :
                                                 goal.color === 'green' ? "from-green-500 to-emerald-500" :
                                                     goal.color === 'purple' ? "from-purple-500 to-violet-500" :
@@ -301,8 +432,15 @@ export default function DashboardPage() {
                                 ) : (
                                     <div className="col-span-2 text-center text-gray-500 text-sm py-4">No active goals found. Start learning to generate some!</div>
                                 )}
-                                <div className="rounded-2xl border-2 border-dashed border-gray-200 p-4 flex items-center justify-center text-gray-400 font-medium hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
-                                    + Add New Goal
+                                <div
+                                    onClick={() => {
+                                        setEditingGoal(null);
+                                        setNewGoalData({ title: '', target: 10, color: 'blue' });
+                                        setIsGoalModalOpen(true);
+                                    }}
+                                    className="rounded-2xl border-2 border-dashed border-gray-200 p-4 flex items-center justify-center text-gray-400 font-medium hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors"
+                                >
+                                    <Plus size={20} className="mr-2" /> Add New Goal
                                 </div>
                             </div>
                         </motion.div>
@@ -319,9 +457,9 @@ export default function DashboardPage() {
                                 This Week
                             </h2>
                             <div className="space-y-4">
-                                <QuickStat icon={<BookOpen size={20} className="text-blue-500" />} label="Modules" value={String(stats.modulesCompleted || 0)} />
-                                <QuickStat icon={<Clock size={20} className="text-purple-500" />} label="Study Time" value={`${Math.floor(stats.totalTimeSpent / 60)}h ${stats.totalTimeSpent % 60}m`} />
-                                <QuickStat icon={<Zap size={20} className="text-yellow-500" />} label="Points Earned" value={String(stats.totalPoints || 0)} />
+                                <QuickStat icon={<BookOpen size={20} className="text-blue-500" />} label="Modules" value={String(thisWeek.modules || 0)} />
+                                <QuickStat icon={<Clock size={20} className="text-purple-500" />} label="Study Time" value={`${Math.floor(thisWeek.time / 60)}h ${thisWeek.time % 60}m`} />
+                                <QuickStat icon={<Zap size={20} className="text-yellow-500" />} label="Points Earned" value={String(thisWeek.points || 0)} />
                             </div>
                         </motion.div>
 
@@ -366,6 +504,71 @@ export default function DashboardPage() {
 
             <AccessibilityPanel />
             <AskAI />
+
+            {/* Goal Modal */}
+            <AnimatePresence>
+                {isGoalModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl"
+                        >
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-2xl font-bold text-gray-900">{editingGoal ? 'Edit' : 'Add New'} Goal</h3>
+                                <button onClick={() => { setIsGoalModalOpen(false); setEditingGoal(null); }} className="text-gray-400 hover:text-gray-600">
+                                    <CloseIcon size={24} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleAddGoal} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="e.g., Read 10 PDFs"
+                                        value={newGoalData.title}
+                                        onChange={e => setNewGoalData({ ...newGoalData, title: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Target Value</label>
+                                    <input
+                                        required
+                                        type="number"
+                                        min="1"
+                                        value={newGoalData.target}
+                                        onChange={e => setNewGoalData({ ...newGoalData, target: parseInt(e.target.value) })}
+                                        className="w-full rounded-xl border border-gray-200 p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Theme Color</label>
+                                    <div className="flex gap-3">
+                                        {['blue', 'green', 'purple', 'orange'].map(c => (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => setNewGoalData({ ...newGoalData, color: c })}
+                                                className={`h-10 w-10 rounded-full border-4 transition-all ${newGoalData.color === c ? 'border-gray-900 scale-110 shadow-lg' : 'border-transparent opacity-60'} ${c === 'blue' ? 'bg-blue-500' : c === 'green' ? 'bg-green-500' : c === 'purple' ? 'bg-purple-500' : 'bg-orange-500'
+                                                    }`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full rounded-xl bg-gray-900 py-4 font-bold text-white transition-all hover:bg-gray-800 hover:shadow-lg active:scale-[0.98] mt-4"
+                                >
+                                    {editingGoal ? 'Update' : 'Create'} Goal
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -390,14 +593,40 @@ const getRelativeTime = (dateString: string) => {
     }
 };
 
-function GoalProgress({ label, current, target, color = "from-green-500 to-emerald-500" }: { label: string; current: number; target: number; color?: string }) {
+function GoalProgress({ id, label, current, target, completed, color = "from-green-500 to-emerald-500", onDelete, onEdit, onToggle }: { id?: string, label: string; current: number; target: number; completed?: boolean; color?: string; onDelete: (id: string) => void; onEdit: () => void; onToggle: () => void }) {
     const percentage = Math.min((current / target) * 100, 100);
 
     return (
-        <div>
+        <div className={`group relative rounded-2xl p-3 transition-all ${completed ? 'bg-gray-50 opacity-70' : 'hover:bg-gray-50/50'}`}>
             <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-medium text-gray-700">{label}</span>
-                <span className="font-bold text-gray-900">{current}/{target}</span>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={onToggle}
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-blue-500'}`}
+                    >
+                        {completed && <Check size={12} strokeWidth={4} />}
+                    </button>
+                    <span className={`font-medium ${completed ? 'text-gray-500 line-through' : 'text-gray-700'}`}>{label}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className={`font-bold ${completed ? 'text-gray-400' : 'text-gray-900'}`}>{current}/{target}</span>
+                    {id && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                                onClick={onEdit}
+                                className="text-gray-400 hover:text-blue-500 p-1"
+                            >
+                                <Edit2 size={14} />
+                            </button>
+                            <button
+                                onClick={() => onDelete(id)}
+                                className="text-gray-400 hover:text-red-500 p-1"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-gray-100">
                 <motion.div

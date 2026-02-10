@@ -27,10 +27,10 @@ export interface UserStats {
 }
 
 class GamificationService {
-    private readonly POINTS_PER_MODULE = 100;
-    private readonly POINTS_PER_QUIZ = 50;
-    private readonly STREAK_BONUS = 10;
-    private readonly LEVEL_THRESHOLD = 500; // points per level
+    private readonly POINTS_PER_MODULE = 200;
+    private readonly POINTS_PER_QUIZ = 100;
+    private readonly STREAK_BONUS = 20;
+    private readonly LEVEL_THRESHOLD = 200; // points per level
 
     /**
      * Calculate points earned for completing a module

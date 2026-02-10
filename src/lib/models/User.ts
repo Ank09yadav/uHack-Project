@@ -18,6 +18,7 @@ export interface IUser extends Document {
     streak?: number;
     achievements?: string[]; // IDs of unlocked achievements
     completedModules?: string[]; // IDs of completed modules
+    totalTimeSpent?: number; // in minutes
 
     // Relationships
     teacherId?: mongoose.Types.ObjectId; // For students
@@ -34,6 +35,7 @@ export interface IUser extends Document {
 
     createdAt: Date;
     updatedAt: Date;
+    lastActive?: Date;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -51,6 +53,7 @@ const UserSchema = new Schema<IUser>({
     streak: { type: Number, default: 0 },
     achievements: [{ type: String }],
     completedModules: [{ type: String }],
+    totalTimeSpent: { type: Number, default: 0 },
 
     // Relationships
     teacherId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -64,6 +67,7 @@ const UserSchema = new Schema<IUser>({
         speechToText: { type: Boolean, default: false },
         language: { type: String, default: 'en' },
     },
+    lastActive: { type: Date, default: Date.now },
 }, {
     timestamps: true,
 });

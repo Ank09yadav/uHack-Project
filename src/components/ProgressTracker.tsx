@@ -11,7 +11,7 @@ interface ProgressTrackerProps {
 }
 
 export function ProgressTracker({ stats, className = "" }: ProgressTrackerProps) {
-    const progressToNextLevel = ((stats.totalPoints % 500) / 500) * 100;
+    const progressToNextLevel = ((stats.totalPoints % 200) / 200) * 100;
 
     return (
         <div className={`space-y-6 ${className}`}>
@@ -28,7 +28,7 @@ export function ProgressTracker({ stats, className = "" }: ProgressTrackerProps)
 
                 <div className="mb-2 flex items-center justify-between text-sm">
                     <span>{stats.totalPoints} points</span>
-                    <span>{500 - (stats.totalPoints % 500)} to next level</span>
+                    <span>{200 - (stats.totalPoints % 200)} to next level</span>
                 </div>
 
                 <div className="h-3 overflow-hidden rounded-full bg-white/20">

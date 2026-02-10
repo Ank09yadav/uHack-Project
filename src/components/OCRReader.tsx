@@ -19,6 +19,25 @@ export function OCRReader() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { speak, stop, isSpeaking } = useTextToSpeech();
 
+    const handleLogActivity = async (fileName: string) => {
+        try {
+            await fetch('/api/dashboard/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    activity: {
+                        type: 'module',
+                        title: `Scanned: ${fileName}`,
+                        points: 50,
+                        meta: { duration: 1 } // Count as 1 min of effort
+                    }
+                })
+            });
+        } catch (error) {
+            console.warn("Failed to log OCR activity", error);
+        }
+    };
+
     const handleAnalyzeAccessibility = async (imageData: string, file: File) => {
         try {
             const formData = new FormData();
@@ -173,6 +192,9 @@ export function OCRReader() {
                     }
                 }
                 setExtractedText(fullText || "Could not extract text from this PDF.");
+                if (fullText) {
+                    await handleLogActivity(file.name);
+                }
                 // For PDF, we'll set a placeholder or the first page as image if we want
                 // For now, let's keep image as null but we could show a PDF icon in the UI
                 setImage(null);

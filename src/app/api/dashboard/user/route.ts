@@ -43,31 +43,63 @@ export async function GET() {
             return NextResponse.json({ message: 'User not found' }, { status: 404 });
         }
 
-        // 2. Fetch Goals
+        // 2. Fetch Goals - Seed if empty
         let goals = await Goal.find({ userId });
+        if (goals.length === 0) {
+            const defaultGoals = [
+                { userId, title: 'Daily Streak', current: user.streak || 0, target: 7, color: 'purple' },
+                { userId, title: 'Learn 5 Modules', current: user.completedModules?.length || 0, target: 5, color: 'blue' },
+                { userId, title: 'Study Time', current: user.totalTimeSpent || 0, target: 120, color: 'green' }
+            ];
+            await Goal.insertMany(defaultGoals);
+            goals = await Goal.find({ userId });
+        }
 
-        // 3. Fetch Recent Activity
+        // 3. Fetch Recent Activity - Seed if empty
         let activities = await Activity.find({ userId }).sort({ createdAt: -1 }).limit(5);
+        if (activities.length === 0) {
+            const welcomeActivity = {
+                userId,
+                type: 'achievement',
+                title: 'Joined InkluLearn!',
+                points: 50
+            };
+            await Activity.create(welcomeActivity);
 
-        // 4. Fetch Recommended Modules
-        const recommendedModules = await Module.find({}).limit(3);
+            // Add initial points to user
+            user.points = (user.points || 0) + 50;
+            await user.save();
+
+            activities = await Activity.find({ userId }).sort({ createdAt: -1 }).limit(5);
+        }
+
+        // 4. Fetch Recommended Modules (Randomize each time using $sample)
+        const recommendedModules = await Module.aggregate([{ $sample: { size: 3 } }]);
 
         // 5. Construct Response
+        const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const thisWeekActivities = await Activity.find({ userId, createdAt: { $gte: lastWeek } });
+
+        const thisWeekStats = {
+            modules: thisWeekActivities.filter(a => a.type === 'module').length,
+            time: thisWeekActivities.reduce((acc, a) => acc + (a.meta?.duration || 0), 0),
+            points: thisWeekActivities.reduce((acc, a) => acc + (a.points || 0), 0)
+        };
+
         return NextResponse.json({
             user: {
                 name: user.name,
                 points: user.points || 0,
                 streak: user.streak || 0,
-                level: Math.floor((user.points || 0) / 500) + 1,
+                level: Math.floor((user.points || 0) / 200) + 1,
                 achievements: user.achievements || [],
                 modulesCompleted: user.completedModules?.length || 0,
-                // totalTimeSpent logic could be aggregated from activities or stored on user. 
-                // For now, let's mock it or assume it's on user if schema supported it (Schema had default but let's be safe)
-                totalTimeSpent: 120 // Mocking time for now as it wasn't clearly in Schema
+                totalTimeSpent: user.totalTimeSpent || 0
             },
             goals: goals,
             activities: activities,
-            recommendedModules: recommendedModules.length > 0 ? recommendedModules : MOCK_USER_DATA.recommendedModules
+            recommendedModules: recommendedModules.length > 0 ? recommendedModules : MOCK_USER_DATA.recommendedModules,
+            thisWeek: thisWeekStats
         });
 
     } catch (error) {
