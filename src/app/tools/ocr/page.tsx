@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { Navbar } from '@/components/Navbar';
-import { ArrowLeft, Construction } from 'lucide-react';
+import { OCRReader } from '@/components/OCRReader';
+import { ArrowLeft, FileImage } from 'lucide-react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 
-export default function ToolPlaceholderPage() {
+export default function OCRPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
@@ -16,20 +18,24 @@ export default function ToolPlaceholderPage() {
                     Back to Dashboard
                 </Link>
 
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-gray-200 bg-white p-16 text-center shadow-lg">
-                    <div className="mb-6 rounded-full bg-yellow-100 p-6 text-yellow-600">
-                        <Construction size={48} />
-                    </div>
-                    <h1 className="mb-2 text-3xl font-bold text-gray-900">Coming Soon</h1>
-                    <p className="max-w-md text-lg text-gray-600">
-                        This tool is currently under development. We're working hard to bring you the best accessible learning experience!
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-8"
+                >
+                    <h1 className="flex items-center gap-3 text-3xl font-bold text-gray-900">
+                        <div className="rounded-xl bg-blue-100 p-3 text-blue-600">
+                            <FileImage size={32} />
+                        </div>
+                        OCR Text Reader (Image & PDF)
+                    </h1>
+                    <p className="mt-2 text-lg text-gray-600">
+                        Convert Images and PDF documents into editable and accessible text.
                     </p>
-                    <Link
-                        href="/dashboard"
-                        className="mt-8 rounded-xl bg-blue-600 px-8 py-3 font-semibold text-white transition-all hover:bg-blue-700 hover:shadow-lg"
-                    >
-                        Explore Other Tools
-                    </Link>
+                </motion.div>
+
+                <div className="mt-8">
+                    <OCRReader />
                 </div>
             </main>
         </div>

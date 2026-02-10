@@ -108,7 +108,7 @@ export default function DashboardPage() {
         { id: 'stt', title: 'Speech to Text', icon: <Mic size={20} />, description: 'Convert voice to text', href: '/tools/speech-to-text', color: 'bg-blue-500' },
         { id: 'tts', title: 'Text to Speech', icon: <Volume2 size={20} />, description: 'Listen to content', href: '/tools/text-to-speech', color: 'bg-purple-500' },
         { id: 'sign', title: 'Sign Language', icon: <Video size={20} />, description: 'AI Sign Detection', href: '/tools/sign-language', color: 'bg-orange-500' },
-        { id: 'ocr', title: 'OCR Reader', icon: <FileText size={20} />, description: 'Extract text from images', href: '/tools/ocr', color: 'bg-green-500' },
+        { id: 'ocr', title: 'OCR Reader', icon: <FileText size={20} />, description: 'Extract text from Images/PDF', href: '/tools/ocr', color: 'bg-green-500' },
         { id: 'ai', title: 'AI Tutor', icon: <Brain size={20} />, description: 'Ask questions', href: '/tools/ai-tutor', color: 'bg-pink-500' },
         { id: 'attention', title: 'Attention Monitor', icon: <ActivityIcon size={20} />, description: 'Focus assistance', href: '/tools/attention', color: 'bg-yellow-500' },
         { id: 'eye', title: 'Eye Tracking', icon: <Eye size={20} />, description: 'Control with eyes', href: '/tools/eye-tracking', color: 'bg-indigo-500' },

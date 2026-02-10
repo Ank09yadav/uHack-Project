@@ -49,28 +49,41 @@ async def transcribe_audio(file: UploadFile = File(...)):
     """
     Transcribe uploaded audio file using Whisper.
     """
-    temp_filename = ""
+    import tempfile
+    
+    temp_file = None
     try:
-        temp_filename = os.path.abspath(f"temp_{file.filename}")
-        print(f"Receiving file: {file.filename}, saving to {temp_filename}")
-        with open(temp_filename, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Create a temporary file with a proper extension
+        suffix = os.path.splitext(file.filename)[1] or ".tmp"
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        temp_filename = temp_file.name
+        
+        print(f"Receiving file: {file.filename}, saving to temporary path: {temp_filename}")
+        
+        content = await file.read()
+        temp_file.write(content)
+        temp_file.close()
         
         file_size = os.path.getsize(temp_filename)
         print(f"File saved. Size: {file_size} bytes")
         
+        if file_size == 0:
+            raise ValueError("Uploaded file is empty")
+            
         text = ""
         
         if USE_LOCAL_WHISPER:
-            print(f"Starting transcription for {temp_filename}...")
+            print(f"Starting transcription for {temp_filename} using Whisper...")
+            # Ensure FFmpeg is accessible
+            if not shutil.which("ffmpeg"):
+                print("FFmpeg not found in path during transcription call!")
+                
             result = model.transcribe(temp_filename)
             text = result.get("text", "").strip()
             print(f"Transcription complete. Result: '{text}'")
         else:
              print("Whisper not available, throwing 503")
-             if os.path.exists(temp_filename):
-                os.remove(temp_filename)
-             raise HTTPException(status_code=503, detail="Whisper module/FFmpeg not installed. Please install 'openai-whisper' and 'ffmpeg' or use Fast Mode.")
+             raise HTTPException(status_code=503, detail="Whisper module/FFmpeg not installed.")
         
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
@@ -78,9 +91,14 @@ async def transcribe_audio(file: UploadFile = File(...)):
         return {"text": text}
     
     except Exception as e:
-        print(f"Error during transcription: {e}")
-        if temp_filename and os.path.exists(temp_filename):
-            os.remove(temp_filename)
+        print(f"Error during transcription: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        if temp_file and os.path.exists(temp_file.name):
+            try:
+                os.remove(temp_file.name)
+            except:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
