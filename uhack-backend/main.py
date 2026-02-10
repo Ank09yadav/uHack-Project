@@ -5,6 +5,11 @@ import uvicorn
 import shutil
 import os
 
+# Add FFmpeg to PATH if not already present
+ffmpeg_path = r"C:\Users\Vikash 2\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.0.1-full_build\bin"
+if os.path.exists(ffmpeg_path) and ffmpeg_path not in os.environ["PATH"]:
+    os.environ["PATH"] += os.pathsep + ffmpeg_path
+
 from pydantic import BaseModel
 
 app = FastAPI(title="InkluLearn AI Backend")
@@ -37,28 +42,45 @@ except ImportError:
 def read_root():
     return {"status": "online", "service": "InkluLearn Backend"}
 
+
+
 @app.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     """
     Transcribe uploaded audio file using Whisper.
     """
+    temp_filename = ""
     try:
-        temp_filename = f"temp_{file.filename}"
+        temp_filename = os.path.abspath(f"temp_{file.filename}")
+        print(f"Receiving file: {file.filename}, saving to {temp_filename}")
         with open(temp_filename, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        
+        file_size = os.path.getsize(temp_filename)
+        print(f"File saved. Size: {file_size} bytes")
         
         text = ""
         
         if USE_LOCAL_WHISPER:
+            print(f"Starting transcription for {temp_filename}...")
             result = model.transcribe(temp_filename)
-            text = result["text"]
+            text = result.get("text", "").strip()
+            print(f"Transcription complete. Result: '{text}'")
         else:
-             os.remove(temp_filename)
+             print("Whisper not available, throwing 503")
+             if os.path.exists(temp_filename):
+                os.remove(temp_filename)
              raise HTTPException(status_code=503, detail="Whisper module/FFmpeg not installed. Please install 'openai-whisper' and 'ffmpeg' or use Fast Mode.")
         
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+            
         return {"text": text}
     
     except Exception as e:
+        print(f"Error during transcription: {e}")
+        if temp_filename and os.path.exists(temp_filename):
+            os.remove(temp_filename)
         raise HTTPException(status_code=500, detail=str(e))
 
 
