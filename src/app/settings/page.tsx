@@ -117,60 +117,6 @@ export default function SettingsPage() {
                 </motion.div>
 
                 <div className="space-y-6">
-                    {/* Profile Settings */}
-                    <SettingsSection
-                        icon={<User className="text-blue-500" size={24} />}
-                        title="Profile"
-                        description="Manage your personal information"
-                    >
-                        <div className="space-y-4">
-                            {/* Photo Upload */}
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="h-16 w-16 rounded-full bg-gray-200 overflow-hidden border-2 border-gray-300">
-                                    {imagePreview ? (
-                                        <img src={imagePreview} alt="Profile" className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="h-full w-full flex items-center justify-center text-gray-400">
-                                            <User size={32} />
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Profile Photo
-                                    </label>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleImageChange}
-                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">Processed with OpenCV for validation</p>
-                                </div>
-                            </div>
-
-                            <InputField
-                                label="Full Name"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="John Doe"
-                            />
-                            <InputField
-                                label="Email"
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                placeholder="john@example.com"
-                            />
-                            <InputField
-                                label="Grade/Level"
-                                value={formData.grade}
-                                onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                                placeholder="10th Grade"
-                            />
-                        </div>
-                    </SettingsSection>
-
                     {/* Accessibility Settings */}
                     <SettingsSection
                         icon={<Palette className="text-purple-500" size={24} />}
@@ -218,6 +164,27 @@ export default function SettingsPage() {
                                 description="Increase color contrast for better visibility"
                                 checked={settings.highContrast}
                                 onChange={(checked) => updateSettings({ highContrast: checked })}
+                            />
+
+                            <SelectField
+                                label="Color Blindness Filter"
+                                options={['None', 'Protanopia', 'Deuteranopia', 'Tritanopia']}
+                                value={settings.colorBlindnessMode.charAt(0).toUpperCase() + settings.colorBlindnessMode.slice(1)}
+                                onChange={(val) => updateSettings({ colorBlindnessMode: val.toLowerCase() as any })}
+                            />
+
+                            <ToggleField
+                                label="Enhanced Focus Indicators"
+                                description="Make the keyboard focus highlight more prominent"
+                                checked={settings.enhancedFocus}
+                                onChange={(checked) => updateSettings({ enhancedFocus: checked })}
+                            />
+
+                            <ToggleField
+                                label="Screen Reader Layout"
+                                description="Optimize layout for screen reading software"
+                                checked={settings.screenReaderLayout}
+                                onChange={(checked) => updateSettings({ screenReaderLayout: checked })}
                             />
                         </div>
                     </SettingsSection>
